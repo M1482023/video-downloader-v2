@@ -46,17 +46,15 @@ Actor.main(async () => {
     log.info(`📁 Created temp directory: ${tempDir}`);
 
     try {
-        // Step 1: Install dependencies
-        log.info('🔧 Installing dependencies...');
+        // Step 1: Check dependencies
+        log.info('🔧 Checking dependencies...');
         
-        // Check/install yt-dlp
+        // Check if yt-dlp is available
         try {
             execSync('yt-dlp --version', { stdio: 'inherit' });
-            log.info('✅ yt-dlp is already installed');
+            log.info('✅ yt-dlp is available');
         } catch (e) {
-            log.info('📦 Installing yt-dlp...');
-            execSync('pip install --user yt-dlp', { stdio: 'inherit' });
-            log.info('✅ yt-dlp installed successfully');
+            throw new Error('❌ yt-dlp is not available. Please ensure it is installed in the Docker image.');
         }
 
         // Step 2: Detect platform if auto
