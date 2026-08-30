@@ -245,10 +245,12 @@ function buildYtDlpCommand(url, outputDir, cookiesFile, platform, poToken, proxy
     // Add ignore errors
     command += ' --ignore-errors';
     
-    // Add no-check-certificate for proxy SSL issues
+    // Add no-check-certificate and socket timeout for proxy SSL issues
     if (proxyUrl || (proxyConfiguration?.proxyUrls && proxyConfiguration.proxyUrls.length > 0)) {
         command += ' --no-check-certificate';
+        command += ' --socket-timeout 60';
         log.info('🔓 SSL certificate verification disabled for proxy');
+        log.info('⏱️  Socket timeout increased to 60 seconds');
     }
     
     command += ` "${url}"`;
