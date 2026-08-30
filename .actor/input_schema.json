@@ -8,7 +8,7 @@
       "type": "string",
       "description": "The URL of the video to download (YouTube, Vimeo, Facebook, Reddit, TikTok, Instagram)",
       "prefill": "",
-      "editor": "textfield"
+      "editor": "secretText"
     },
     "cookies": {
       "title": "Cookies",
@@ -42,7 +42,7 @@
     "uploadToDrive": {
       "title": "Upload to Google Drive",
       "type": "boolean",
-      "description": "Upload the downloaded video to Google Drive (requires GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REFRESH_TOKEN environment variables)",
+      "description": "Upload the downloaded video to Google Drive",
       "default": false,
       "editor": "checkbox"
     },
@@ -50,6 +50,27 @@
       "title": "Google Drive Folder ID",
       "type": "string",
       "description": "Google Drive folder ID to upload the video to (leave empty for root folder)",
+      "prefill": "",
+      "editor": "textfield"
+    },
+    "googleClientId": {
+      "title": "Google Client ID",
+      "type": "string",
+      "description": "Google OAuth Client ID for Drive API access",
+      "prefill": "",
+      "editor": "textfield"
+    },
+    "googleClientSecret": {
+      "title": "Google Client Secret",
+      "type": "string",
+      "description": "Google OAuth Client Secret for Drive API access",
+      "prefill": "",
+      "editor": "textfield"
+    },
+    "googleRefreshToken": {
+      "title": "Google Refresh Token",
+      "type": "string",
+      "description": "Google OAuth Refresh Token for Drive API access",
       "prefill": "",
       "editor": "textfield"
     }
