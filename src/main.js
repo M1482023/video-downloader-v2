@@ -186,6 +186,11 @@ function buildYtDlpCommand(url, outputDir, cookiesFile, platform) {
         command += ` --cookies "${cookiesFile}"`;
     }
     
+    // Add remote components for YouTube (Deno is installed and enabled by default)
+    if (platform === 'youtube') {
+        command += ' --remote-components ejs:github';
+    }
+    
     // Add platform-specific options
     if (platform === 'facebook') {
         command += ' --extractor-args "facebook:username=auto"';

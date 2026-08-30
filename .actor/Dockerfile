@@ -10,7 +10,11 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     zip \
     curl \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Deno (required for YouTube downloads)
+RUN curl -fsSL https://deno.land/install.sh | sh && mv /root/.deno/bin/deno /usr/local/bin/
 
 # Install latest yt-dlp
 RUN pip3 install yt-dlp google-api-python-client google-auth-httplib2 google-auth-oauthlib
