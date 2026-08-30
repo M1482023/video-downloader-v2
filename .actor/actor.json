@@ -1,0 +1,6 @@
+{
+  "name": "video-downloader",
+  "version": "0.0.1",
+  "buildTag": "latest",
+  "environmentVariables": {}
+}

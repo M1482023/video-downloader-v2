@@ -1,0 +1,65 @@
+{
+  "title": "Video Downloader Input",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "videoUrl": {
+      "title": "Video URL",
+      "type": "string",
+      "description": "The URL of the video to download (YouTube, Vimeo, Facebook, Reddit, TikTok, Instagram)",
+      "prefill": "",
+      "editor": "textfield"
+    },
+    "cookies": {
+      "title": "Cookies",
+      "type": "string",
+      "description": "Cookies in Netscape format for authentication (one cookie per line)",
+      "prefill": "",
+      "editor": "textarea"
+    },
+    "platform": {
+      "title": "Platform",
+      "type": "string",
+      "description": "Platform of the video (auto-detected if not specified)",
+      "enum": ["youtube", "vimeo", "facebook", "reddit", "tiktok", "instagram", "auto"],
+      "default": "auto",
+      "editor": "select"
+    },
+    "uploadToDrive": {
+      "title": "Upload to Google Drive",
+      "type": "boolean",
+      "description": "Upload the downloaded video to Google Drive",
+      "default": false,
+      "editor": "boolean"
+    },
+    "driveFolderId": {
+      "title": "Google Drive Folder ID",
+      "type": "string",
+      "description": "Google Drive folder ID to upload the video to (leave empty for root folder)",
+      "prefill": "",
+      "editor": "textfield"
+    },
+    "googleClientId": {
+      "title": "Google Client ID",
+      "type": "string",
+      "description": "Google OAuth Client ID for Drive API access",
+      "prefill": "",
+      "editor": "textfield"
+    },
+    "googleClientSecret": {
+      "title": "Google Client Secret",
+      "type": "string",
+      "description": "Google OAuth Client Secret for Drive API access",
+      "prefill": "",
+      "editor": "textfield"
+    },
+    "googleRefreshToken": {
+      "title": "Google Refresh Token",
+      "type": "string",
+      "description": "Google OAuth Refresh Token for Drive API access",
+      "prefill": "",
+      "editor": "textfield"
+    }
+  },
+  "required": ["videoUrl"]
+}
