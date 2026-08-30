@@ -1,4 +1,4 @@
-FROM apify/actor-node:16
+FROM apify/actor-node-puppeteer-chrome:16
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
