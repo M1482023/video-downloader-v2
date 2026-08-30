@@ -32,8 +32,8 @@ Actor.main(async () => {
     log.info(`📥 Video URL: ${videoUrl}`);
     log.info(`🍪 Cookies provided: ${cookies ? 'Yes' : 'No'}`);
     log.info(`🔑 PO Token provided: ${poToken ? 'Yes' : 'No'}`);
-    log.info(`� Proxy configuration: ${proxyConfiguration?.useApifyProxy ? 'Apify Proxy enabled' : 'No proxy'}`);
-    log.info(`�🎯 Platform: ${platform}`);
+    log.info(`🌐 Proxy configuration: ${proxyConfiguration?.useApifyProxy ? 'Apify Proxy enabled' : 'No proxy'}`);
+    log.info(`🎯 Platform: ${platform}`);
     log.info(`☁️  Upload to Drive: ${uploadToDrive ? 'Yes' : 'No'}`);
     if (uploadToDrive) {
         log.info(`📁 Drive Folder ID: ${driveFolderId || 'Root folder'}`);
@@ -87,7 +87,7 @@ Actor.main(async () => {
 
         // Step 4: Download video
         log.info('⬇️  Starting video download...');
-        const downloadCommand = buildYtDlpCommand(videoUrl, downloadDir, cookiesFile, detectedPlatform, poToken);
+        const downloadCommand = buildYtDlpCommand(videoUrl, downloadDir, cookiesFile, detectedPlatform, poToken, proxyConfiguration);
         log.info(`🚀 Running: ${downloadCommand}`);
         
         try {
@@ -192,7 +192,7 @@ function detectPlatform(url) {
 }
 
 // Helper function to build yt-dlp command
-function buildYtDlpCommand(url, outputDir, cookiesFile, platform, poToken) {
+function buildYtDlpCommand(url, outputDir, cookiesFile, platform, poToken, proxyConfiguration) {
     let command = `yt-dlp --output "${outputDir}/%(title)s.%(ext)s"`;
     
     if (cookiesFile) {
@@ -202,6 +202,19 @@ function buildYtDlpCommand(url, outputDir, cookiesFile, platform, poToken) {
     // Add PO Token for YouTube if provided
     if (poToken && platform === 'youtube') {
         command += ` --extractor-args "youtube:po_token=${poToken}"`;
+    }
+    
+    // Add proxy if configured
+    if (proxyConfiguration) {
+        if (proxyConfiguration.proxyUrls && proxyConfiguration.proxyUrls.length > 0) {
+            // Use custom proxy URLs
+            command += ` --proxy "${proxyConfiguration.proxyUrls[0]}"`;
+            log.info(`🌐 Using custom proxy: ${proxyConfiguration.proxyUrls[0]}`);
+        } else if (proxyConfiguration.useApifyProxy) {
+            // For Apify Proxy, we'd need to get the actual proxy URL
+            // This is a placeholder - in real implementation you'd use Apify SDK to get proxy
+            log.warning('⚠️  Apify Proxy configured but not directly supported by yt-dlp. Please use custom proxy URLs instead.');
+        }
     }
     
     // Add platform-specific options
