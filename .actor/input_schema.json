@@ -17,6 +17,20 @@
       "prefill": "",
       "editor": "textarea"
     },
+    "poToken": {
+      "title": "YouTube PO Token",
+      "type": "string",
+      "description": "YouTube PO Token for bypassing stricter security (optional, see https://github.com/yt-dlp/yt-dlp/wiki/PO-Token-Guide)",
+      "prefill": "",
+      "editor": "textfield"
+    },
+    "proxyConfiguration": {
+      "title": "Proxy configuration",
+      "type": "object",
+      "description": "Select proxies to be used by the downloader.",
+      "prefill": { "useApifyProxy": false },
+      "editor": "proxy"
+    },
     "platform": {
       "title": "Platform",
       "type": "string",
