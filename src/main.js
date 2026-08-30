@@ -186,6 +186,9 @@ function buildYtDlpCommand(url, outputDir, cookiesFile, platform) {
         command += ` --cookies "${cookiesFile}"`;
     }
     
+    // Add js-runtimes and remote-components (from original script)
+    command += ' --js-runtimes deno --remote-components ejs:github';
+    
     // Add platform-specific options
     if (platform === 'facebook') {
         command += ' --extractor-args "facebook:username=auto"';
