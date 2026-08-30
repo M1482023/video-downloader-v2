@@ -1,5 +1,8 @@
 FROM apify/actor-node-puppeteer-chrome:16
 
+# Switch to root user for system package installation
+USER root
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     python3 \
@@ -8,6 +11,9 @@ RUN apt-get update && apt-get install -y \
     zip \
     curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Switch back to non-root user
+USER myuser
 
 # Install yt-dlp and Google Drive API
 RUN pip3 install --user yt-dlp google-api-python-client google-auth-httplib2 google-auth-oauthlib
