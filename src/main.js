@@ -1,5 +1,5 @@
 import { Actor, log, ProxyConfiguration } from 'apify';
-import { execSync } from 'child_process';
+import { execSync, spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -16,9 +16,9 @@ Actor.main(async () => {
 
     // Get input from the user
     const input = await Actor.getInput();
-    const { 
-        videoUrl, 
-        cookies, 
+    const {
+        videoUrl,
+        cookies,
         poToken,
         proxyConfiguration,
         platform = 'auto',
@@ -26,7 +26,8 @@ Actor.main(async () => {
         driveFolderId = '',
         googleClientId = '',
         googleClientSecret = '',
-        googleRefreshToken = ''
+        googleRefreshToken = '',
+        maxVideosBeforeUpload = 30
     } = input;
 
     if (!videoUrl) {
@@ -52,6 +53,17 @@ Actor.main(async () => {
     fs.mkdirSync(downloadDir, { recursive: true });
 
     log.info(`📁 Created temp directory: ${tempDir}`);
+
+    // Maximum videos before auto-upload and stop
+    const MAX_VIDEOS_BEFORE_UPLOAD = maxVideosBeforeUpload > 0 ? maxVideosBeforeUpload : Infinity;
+    let downloadedVideosCount = 0;
+    let shouldStopDownload = false;
+
+    if (maxVideosBeforeUpload > 0) {
+        log.info(`🎯 Auto-upload limit: ${maxVideosBeforeUpload} videos`);
+    } else {
+        log.info('🎯 Auto-upload limit: disabled');
+    }
 
     // Initialize Apify Proxy if configured
     let apifyProxy = null;
@@ -108,17 +120,37 @@ Actor.main(async () => {
             }
         }
 
-        // Step 4: Download video
+        // Step 4: Download video(s)
         log.info('⬇️  Starting video download...');
-        const downloadCommand = buildYtDlpCommand(videoUrl, downloadDir, cookiesFile, detectedPlatform, poToken, proxyConfiguration, proxyUrl);
-        log.info(`🚀 Running: ${downloadCommand}`);
-        
+        const downloadCommandArgs = buildYtDlpCommandArgs(videoUrl, downloadDir, cookiesFile, detectedPlatform, poToken, proxyConfiguration, proxyUrl);
+        log.info(`🚀 Running: yt-dlp ${downloadCommandArgs.join(' ')}`);
+
         try {
-            execSync(downloadCommand, { stdio: 'inherit' });
-            log.info('✅ Video downloaded successfully');
+            await downloadWithProgressTracking(downloadCommandArgs, (progress) => {
+                // Count downloaded videos based on yt-dlp output
+                if (progress.includes('[download]')) {
+                    const match = progress.match(/\[download\] Downloading video (\d+) of (\d+)/);
+                    if (match) {
+                        downloadedVideosCount = parseInt(match[1]);
+                        log.info(`📊 Downloaded ${downloadedVideosCount} videos`);
+
+                        // Check if we reached the limit
+                        if (downloadedVideosCount >= MAX_VIDEOS_BEFORE_UPLOAD && !shouldStopDownload) {
+                            shouldStopDownload = true;
+                            log.info(`⚠️  Reached ${MAX_VIDEOS_BEFORE_UPLOAD} videos limit, will stop after current download`);
+                        }
+                    }
+                }
+            }, () => shouldStopDownload);
+
+            log.info('✅ Video download completed');
         } catch (e) {
-            log.error('❌ Video download failed');
-            throw e;
+            if (shouldStopDownload) {
+                log.info('🛑 Download stopped due to video limit');
+            } else {
+                log.error('❌ Video download failed');
+                throw e;
+            }
         }
 
         // Step 5: List downloaded files
@@ -129,6 +161,20 @@ Actor.main(async () => {
             const stats = fs.statSync(filePath);
             log.info(`   - ${file} (${formatBytes(stats.size)})`);
         });
+
+        // Check if we hit the video limit
+        const hitVideoLimit = downloadedVideosCount >= MAX_VIDEOS_BEFORE_UPLOAD;
+        if (hitVideoLimit) {
+            log.info(`⚠️  Hit video limit (${MAX_VIDEOS_BEFORE_UPLOAD}), will force upload to Drive`);
+            // Force upload to Drive even if not originally requested
+            if (!uploadToDrive) {
+                log.info('🔄 Auto-enabling Drive upload due to video limit');
+                // We'll use the Drive credentials if provided, otherwise warn
+                if (!googleClientId || !googleClientSecret || !googleRefreshToken) {
+                    log.warning('⚠️  Drive credentials not provided, will skip upload');
+                }
+            }
+        }
 
         // Step 6: Compress to ZIP
         const zipFile = path.join(tempDir, 'downloaded-video.zip');
@@ -162,19 +208,32 @@ Actor.main(async () => {
         await Actor.setValue('downloaded-video.zip', zipBuffer, { contentType: 'application/zip' });
         log.info('💾 ZIP file saved to Key-Value Store');
 
-        // Step 8: Upload to Google Drive if requested
-        if (uploadToDrive) {
+        // Step 8: Upload to Google Drive if requested or if hit video limit
+        const shouldUploadToDrive = uploadToDrive || hitVideoLimit;
+        if (shouldUploadToDrive) {
             if (!googleClientId || !googleClientSecret || !googleRefreshToken) {
-                throw new Error('❌ Google Drive credentials are required for upload');
+                if (hitVideoLimit) {
+                    log.warning('⚠️  Hit video limit but no Drive credentials provided - skipping upload');
+                } else {
+                    throw new Error('❌ Google Drive credentials are required for upload');
+                }
+            } else {
+                log.info('☁️  Uploading to Google Drive...');
+                await uploadToGoogleDrive(zipFile, driveFolderId, {
+                    clientId: googleClientId,
+                    clientSecret: googleClientSecret,
+                    refreshToken: googleRefreshToken
+                });
+                log.info('✅ Successfully uploaded to Google Drive');
+
+                // If we hit the video limit, exit after upload
+                if (hitVideoLimit) {
+                    log.info(`🎉 Process completed after ${MAX_VIDEOS_BEFORE_UPLOAD} videos`);
+                    log.info('📤 Files uploaded to Drive and process stopped as requested');
+                    await Actor.exit();
+                    return;
+                }
             }
-            
-            log.info('☁️  Uploading to Google Drive...');
-            await uploadToGoogleDrive(zipFile, driveFolderId, {
-                clientId: googleClientId,
-                clientSecret: googleClientSecret,
-                refreshToken: googleRefreshToken
-            });
-            log.info('✅ Successfully uploaded to Google Drive');
         }
 
         log.info('🎉 Actor completed successfully!');
@@ -214,52 +273,99 @@ function detectPlatform(url) {
     return 'unknown';
 }
 
-// Helper function to build yt-dlp command
-function buildYtDlpCommand(url, outputDir, cookiesFile, platform, poToken, proxyConfiguration, proxyUrl) {
-    let command = `yt-dlp --output "${outputDir}/%(title)s.%(ext)s"`;
-    
+// Helper function to download with progress tracking and stop capability
+function downloadWithProgressTracking(args, onProgress, shouldStopCallback) {
+    return new Promise((resolve, reject) => {
+        const ytDlpProcess = spawn('yt-dlp', args);
+
+        ytDlpProcess.stdout.on('data', (data) => {
+            const output = data.toString();
+            log.info(output.trim());
+            if (onProgress) {
+                onProgress(output);
+            }
+        });
+
+        ytDlpProcess.stderr.on('data', (data) => {
+            const error = data.toString();
+            // Some progress info comes through stderr in yt-dlp
+            if (error.includes('[download]')) {
+                log.info(error.trim());
+                if (onProgress) {
+                    onProgress(error);
+                }
+            } else {
+                log.error(error.trim());
+            }
+        });
+
+        ytDlpProcess.on('close', (code) => {
+            if (code === 0 || shouldStopCallback && shouldStopCallback()) {
+                resolve();
+            } else {
+                reject(new Error(`yt-dlp process exited with code ${code}`));
+            }
+        });
+
+        // Check periodically if we should stop
+        const checkInterval = setInterval(() => {
+            if (shouldStopCallback && shouldStopCallback()) {
+                log.info('🛑 Stopping download process...');
+                ytDlpProcess.kill('SIGTERM');
+                clearInterval(checkInterval);
+            }
+        }, 1000);
+    });
+}
+
+// Helper function to build yt-dlp command arguments
+function buildYtDlpCommandArgs(url, outputDir, cookiesFile, platform, poToken, proxyConfiguration, proxyUrl) {
+    const args = [
+        '--output', `${outputDir}/%(title)s.%(ext)s`,
+        '--newline',
+        '--no-warnings'
+    ];
+
     if (cookiesFile) {
-        command += ` --cookies "${cookiesFile}"`;
+        args.push('--cookies', cookiesFile);
     }
-    
+
     // Add PO Token for YouTube if provided
     if (poToken && platform === 'youtube') {
-        command += ` --extractor-args "youtube:po_token=${poToken}"`;
+        args.push('--extractor-args', `youtube:po_token=${poToken}`);
     }
-    
+
     // Add proxy if configured
     if (proxyUrl) {
-        // Use Apify Proxy URL
-        command += ` --proxy "${proxyUrl}"`;
+        args.push('--proxy', proxyUrl);
         log.info(`🌐 Using Apify Proxy: ${proxyUrl}`);
     } else if (proxyConfiguration?.proxyUrls && proxyConfiguration.proxyUrls.length > 0) {
-        // Use custom proxy URLs
-        command += ` --proxy "${proxyConfiguration.proxyUrls[0]}"`;
+        args.push('--proxy', proxyConfiguration.proxyUrls[0]);
         log.info(`🌐 Using custom proxy: ${proxyConfiguration.proxyUrls[0]}`);
     }
-    
+
     // Add platform-specific options
     if (platform === 'facebook') {
-        command += ' --extractor-args "facebook:username=auto"';
+        args.push('--extractor-args', 'facebook:username=auto');
     }
-    
+
     // Add user agent
-    command += ' --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"';
-    
+    args.push('--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+
     // Add ignore errors
-    command += ' --ignore-errors';
-    
+    args.push('--ignore-errors');
+
     // Add no-check-certificate and socket timeout for proxy SSL issues
     if (proxyUrl || (proxyConfiguration?.proxyUrls && proxyConfiguration.proxyUrls.length > 0)) {
-        command += ' --no-check-certificate';
-        command += ' --socket-timeout 60';
+        args.push('--no-check-certificate');
+        args.push('--socket-timeout', '60');
         log.info('🔓 SSL certificate verification disabled for proxy');
         log.info('⏱️  Socket timeout increased to 60 seconds');
     }
-    
-    command += ` "${url}"`;
-    
-    return command;
+
+    args.push(url);
+
+    return args;
 }
 
 // Helper function to format bytes
