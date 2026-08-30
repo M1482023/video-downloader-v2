@@ -30,7 +30,7 @@
       "type": "boolean",
       "description": "Upload the downloaded video to Google Drive",
       "default": false,
-      "editor": "boolean"
+      "editor": "checkbox"
     },
     "driveFolderId": {
       "title": "Google Drive Folder ID",
