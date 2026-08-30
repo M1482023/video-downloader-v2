@@ -12,8 +12,8 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install specific version of yt-dlp that supports --js-runtimes
-RUN pip3 install "yt-dlp<2024.1.0" google-api-python-client google-auth-httplib2 google-auth-oauthlib
+# Install latest yt-dlp
+RUN pip3 install yt-dlp google-api-python-client google-auth-httplib2 google-auth-oauthlib
 
 # Set working directory
 WORKDIR /usr/src/app
