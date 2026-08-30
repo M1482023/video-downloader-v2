@@ -9,8 +9,8 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install yt-dlp and Google Drive API
-RUN pip3 install --user yt-dlp google-api-python-client google-auth-httplib2 google-auth-oauthlib
+# Install yt-dlp and Google Drive API globally
+RUN pip3 install yt-dlp google-api-python-client google-auth-httplib2 google-auth-oauthlib
 
 # Set working directory
 WORKDIR /usr/src/app
