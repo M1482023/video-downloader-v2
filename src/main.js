@@ -245,6 +245,12 @@ function buildYtDlpCommand(url, outputDir, cookiesFile, platform, poToken, proxy
     // Add ignore errors
     command += ' --ignore-errors';
     
+    // Add no-check-certificate for proxy SSL issues
+    if (proxyUrl || (proxyConfiguration?.proxyUrls && proxyConfiguration.proxyUrls.length > 0)) {
+        command += ' --no-check-certificate';
+        log.info('🔓 SSL certificate verification disabled for proxy');
+    }
+    
     command += ` "${url}"`;
     
     return command;
