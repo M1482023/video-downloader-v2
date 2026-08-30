@@ -1,5 +1,8 @@
 {
+  "actorSpecification": 1,
   "name": "video-downloader",
+  "title": "Video Downloader",
+  "description": "Apify Actor for downloading videos from YouTube, Vimeo, Facebook, Reddit, TikTok, Instagram with Google Drive upload support",
   "version": "0.0.1",
   "buildTag": "latest",
   "environmentVariables": {}
