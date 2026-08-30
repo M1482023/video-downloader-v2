@@ -129,15 +129,25 @@ Actor.main(async () => {
             await downloadWithProgressTracking(downloadCommandArgs, (progress) => {
                 // Count downloaded videos based on yt-dlp output
                 if (progress.includes('[download]')) {
-                    const match = progress.match(/\[download\] Downloading video (\d+) of (\d+)/);
-                    if (match) {
-                        downloadedVideosCount = parseInt(match[1]);
-                        log.info(`📊 Downloaded ${downloadedVideosCount} videos`);
+                    // Try different patterns for different yt-dlp versions
+                    const patterns = [
+                        /\[download\] Downloading video (\d+) of (\d+)/,
+                        /\[download\] Downloading item (\d+) of (\d+)/,
+                        /\[download\] (\d+) of (\d+)/
+                    ];
 
-                        // Check if we reached the limit
-                        if (downloadedVideosCount >= MAX_VIDEOS_BEFORE_UPLOAD && !shouldStopDownload) {
-                            shouldStopDownload = true;
-                            log.info(`⚠️  Reached ${MAX_VIDEOS_BEFORE_UPLOAD} videos limit, will stop after current download`);
+                    for (const pattern of patterns) {
+                        const match = progress.match(pattern);
+                        if (match) {
+                            downloadedVideosCount = parseInt(match[1]);
+                            log.info(`📊 Downloaded ${downloadedVideosCount} videos`);
+
+                            // Check if we reached the limit
+                            if (downloadedVideosCount >= MAX_VIDEOS_BEFORE_UPLOAD && !shouldStopDownload) {
+                                shouldStopDownload = true;
+                                log.info(`⚠️  Reached ${MAX_VIDEOS_BEFORE_UPLOAD} videos limit, will stop after current download`);
+                            }
+                            break;
                         }
                     }
                 }
