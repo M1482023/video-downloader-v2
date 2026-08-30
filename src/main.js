@@ -70,14 +70,15 @@ Actor.main(async () => {
             cookiesFile = path.join(tempDir, 'cookies.txt');
             fs.writeFileSync(cookiesFile, cookies);
             log.info('🍪 Cookies saved to file');
-            log.info(`📋 Cookies file size: ${cookies.length} characters`);
             
-            // Show first few lines of cookies (for debugging)
-            const cookieLines = cookies.split('\n').slice(0, 3);
-            log.info('📋 First few lines of cookies:');
-            cookieLines.forEach((line, index) => {
-                log.info(`   Line ${index + 1}: ${line.substring(0, 50)}${line.length > 50 ? '...' : ''}`);
-            });
+            // Check if cookies are actually valid (not just template)
+            const hasValidCookies = cookies.includes('.youtube.com') || cookies.includes('SAPISID') || cookies.includes('__Secure-');
+            if (!hasValidCookies) {
+                log.warning('⚠️  Cookies appear to be template/placeholder, not actual cookies');
+                log.warning('⚠️  Please export actual YouTube cookies from your browser');
+            } else {
+                log.info('✅ Cookies appear to be valid');
+            }
         }
 
         // Step 4: Download video
@@ -192,11 +193,6 @@ function buildYtDlpCommand(url, outputDir, cookiesFile, platform) {
     
     if (cookiesFile) {
         command += ` --cookies "${cookiesFile}"`;
-    }
-    
-    // Add remote components for YouTube (Deno is installed and enabled by default)
-    if (platform === 'youtube') {
-        command += ' --remote-components ejs:github';
     }
     
     // Add platform-specific options
