@@ -1,4 +1,4 @@
-import { Actor, log } from 'apify';
+import { Actor, log, ProxyConfiguration } from 'apify';
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
@@ -49,6 +49,25 @@ Actor.main(async () => {
 
     log.info(`📁 Created temp directory: ${tempDir}`);
 
+    // Initialize Apify Proxy if configured
+    let apifyProxy = null;
+    let proxyUrl = null;
+    
+    if (proxyConfiguration?.useApifyProxy) {
+        log.info('🌐 Initializing Apify Proxy...');
+        try {
+            apifyProxy = new ProxyConfiguration({
+                groups: proxyConfiguration.apifyProxyGroups,
+                countryCode: proxyConfiguration.countryCode,
+            });
+            proxyUrl = await apifyProxy.newUrl();
+            log.info(`✅ Apify Proxy initialized: ${proxyUrl}`);
+        } catch (e) {
+            log.warning(`⚠️  Failed to initialize Apify Proxy: ${e.message}`);
+            log.warning('⚠️  Continuing without proxy...');
+        }
+    }
+
     try {
         // Step 1: Check dependencies
         log.info('🔧 Checking dependencies...');
@@ -87,7 +106,7 @@ Actor.main(async () => {
 
         // Step 4: Download video
         log.info('⬇️  Starting video download...');
-        const downloadCommand = buildYtDlpCommand(videoUrl, downloadDir, cookiesFile, detectedPlatform, poToken, proxyConfiguration);
+        const downloadCommand = buildYtDlpCommand(videoUrl, downloadDir, cookiesFile, detectedPlatform, poToken, proxyConfiguration, proxyUrl);
         log.info(`🚀 Running: ${downloadCommand}`);
         
         try {
@@ -192,7 +211,7 @@ function detectPlatform(url) {
 }
 
 // Helper function to build yt-dlp command
-function buildYtDlpCommand(url, outputDir, cookiesFile, platform, poToken, proxyConfiguration) {
+function buildYtDlpCommand(url, outputDir, cookiesFile, platform, poToken, proxyConfiguration, proxyUrl) {
     let command = `yt-dlp --output "${outputDir}/%(title)s.%(ext)s"`;
     
     if (cookiesFile) {
@@ -205,16 +224,14 @@ function buildYtDlpCommand(url, outputDir, cookiesFile, platform, poToken, proxy
     }
     
     // Add proxy if configured
-    if (proxyConfiguration) {
-        if (proxyConfiguration.proxyUrls && proxyConfiguration.proxyUrls.length > 0) {
-            // Use custom proxy URLs
-            command += ` --proxy "${proxyConfiguration.proxyUrls[0]}"`;
-            log.info(`🌐 Using custom proxy: ${proxyConfiguration.proxyUrls[0]}`);
-        } else if (proxyConfiguration.useApifyProxy) {
-            // For Apify Proxy, we'd need to get the actual proxy URL
-            // This is a placeholder - in real implementation you'd use Apify SDK to get proxy
-            log.warning('⚠️  Apify Proxy configured but not directly supported by yt-dlp. Please use custom proxy URLs instead.');
-        }
+    if (proxyUrl) {
+        // Use Apify Proxy URL
+        command += ` --proxy "${proxyUrl}"`;
+        log.info(`🌐 Using Apify Proxy: ${proxyUrl}`);
+    } else if (proxyConfiguration?.proxyUrls && proxyConfiguration.proxyUrls.length > 0) {
+        // Use custom proxy URLs
+        command += ` --proxy "${proxyConfiguration.proxyUrls[0]}"`;
+        log.info(`🌐 Using custom proxy: ${proxyConfiguration.proxyUrls[0]}`);
     }
     
     // Add platform-specific options
