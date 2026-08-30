@@ -24,11 +24,16 @@ Actor.main(async () => {
         platform = 'auto',
         uploadToDrive = false,
         driveFolderId = '',
-        googleClientId = '',
-        googleClientSecret = '',
-        googleRefreshToken = '',
+        googleClientId,
+        googleClientSecret,
+        googleRefreshToken,
         maxVideosBeforeUpload = 30
     } = input;
+
+    // Get sensitive values from environment variables if not provided in input
+    const finalGoogleClientId = googleClientId || process.env.GOOGLE_CLIENT_ID || '';
+    const finalGoogleClientSecret = googleClientSecret || process.env.GOOGLE_CLIENT_SECRET || '';
+    const finalGoogleRefreshToken = googleRefreshToken || process.env.GOOGLE_REFRESH_TOKEN || '';
 
     if (!videoUrl) {
         throw new Error('❌ videoUrl is required');
@@ -42,9 +47,9 @@ Actor.main(async () => {
     log.info(`☁️  Upload to Drive: ${uploadToDrive ? 'Yes' : 'No'}`);
     if (uploadToDrive) {
         log.info(`📁 Drive Folder ID: ${driveFolderId || 'Root folder'}`);
-        log.info(`🔑 Google Client ID: ${googleClientId ? 'Provided' : 'Missing'}`);
-        log.info(`🔑 Google Client Secret: ${googleClientSecret ? 'Provided' : 'Missing'}`);
-        log.info(`🔑 Google Refresh Token: ${googleRefreshToken ? 'Provided' : 'Missing'}`);
+        log.info(`🔑 Google Client ID: ${finalGoogleClientId ? 'Provided' : 'Missing'}`);
+        log.info(`🔑 Google Client Secret: ${finalGoogleClientSecret ? 'Provided' : 'Missing'}`);
+        log.info(`🔑 Google Refresh Token: ${finalGoogleRefreshToken ? 'Provided' : 'Missing'}`);
     }
 
     // Create temporary directories
@@ -180,7 +185,7 @@ Actor.main(async () => {
             if (!uploadToDrive) {
                 log.info('🔄 Auto-enabling Drive upload due to video limit');
                 // We'll use the Drive credentials if provided, otherwise warn
-                if (!googleClientId || !googleClientSecret || !googleRefreshToken) {
+                if (!finalGoogleClientId || !finalGoogleClientSecret || !finalGoogleRefreshToken) {
                     log.warning('⚠️  Drive credentials not provided, will skip upload');
                 }
             }
@@ -221,7 +226,7 @@ Actor.main(async () => {
         // Step 8: Upload to Google Drive if requested or if hit video limit
         const shouldUploadToDrive = uploadToDrive || hitVideoLimit;
         if (shouldUploadToDrive) {
-            if (!googleClientId || !googleClientSecret || !googleRefreshToken) {
+            if (!finalGoogleClientId || !finalGoogleClientSecret || !finalGoogleRefreshToken) {
                 if (hitVideoLimit) {
                     log.warning('⚠️  Hit video limit but no Drive credentials provided - skipping upload');
                 } else {
@@ -230,9 +235,9 @@ Actor.main(async () => {
             } else {
                 log.info('☁️  Uploading to Google Drive...');
                 await uploadToGoogleDrive(zipFile, driveFolderId, {
-                    clientId: googleClientId,
-                    clientSecret: googleClientSecret,
-                    refreshToken: googleRefreshToken
+                    clientId: finalGoogleClientId,
+                    clientSecret: finalGoogleClientSecret,
+                    refreshToken: finalGoogleRefreshToken
                 });
                 log.info('✅ Successfully uploaded to Google Drive');
 
