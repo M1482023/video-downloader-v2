@@ -8,7 +8,7 @@
       "type": "string",
       "description": "The URL of the video to download (YouTube, Vimeo, Facebook, Reddit, TikTok, Instagram)",
       "prefill": "",
-      "editor": "secretText"  // <-- השינוי כאן
+      "editor": "secretText"
     },
     "cookies": {
       "title": "Cookies",
